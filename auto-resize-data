@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+# check for sd[b-z]
+# check for vg_data
+# check sizes and names of PVs in vg_data, compare to /proc/partitions
+
+# read /proc/partitions
+
+import re
+import subprocess
+
+def get_valid_disks(matcher_re, blacklist):
+  valid_disks = []
+  partitions_file = '/proc/partitions'
+  partitions = open(partitions_file, 'r').readlines()
+  for partition_line in partitions:
+    line = partition_line.rstrip()
+    if matcher_re.match(line):
+      part_info = line.split()
+      valid_disks.append(part_info[3])
+  return valid_disks
+
+def full_device_path(device):
+  if re.match('^/dev/', device):
+    return device
+  else:
+    return "/dev/" + device
+
+def is_pv_enabled_on_device(device):
+  full_device = full_device_path(device)
+  pvck_output = subprocess.check_output(
+      ['sudo', 'pvck', full_device],
+      stderr=subprocess.STDOUT
+      )
+  if re.search('Could not find LVM label', pvck_output):
+    return False
+  elif re.search('Found label on', pvck_output):
+    return True
+  else:
+    raise RuntimeError("Unexpected output received from pvck: {}".format(pvck_output))
+
+def pvcreate(device):
+  full_device = full_device_path(device)
+  ret = subprocess.call(['sudo', 'pvcreate', full_device])
+  if ret != 0:
+    raise RuntimeError("Failed to pvcreate {}".format(full_device))
+
+#-----------------------------------------------------------------------
+
+if __name__ == '__main__':
+
+  # variables that we could concievably treat as config
+  matching_disks_re = re.compile('.+\ssd[b-z]$')
+  blacklist_disks = []
+  vg_name = "vg_data"
+  lv_name = "lv_data"
+
+  # Get a list of available disks, pvcreate them if they are not already PVs
+  disks = get_valid_disks(matching_disks_re, blacklist_disks)
+  for device in disks:
+    if is_pv_enabled_on_device(device):
+      print "PV is enabled on {}".format(device)
+    else:
+      print "PV is not enabled on {}".format(device)
+      pvcreate(device)
+      if not is_pv_enabled_on_device(device):
+        raise RuntimeError("Could not pvcreate {}".format(device))
+
