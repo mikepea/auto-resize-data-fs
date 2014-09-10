@@ -39,11 +39,56 @@ def is_pv_enabled_on_device(device):
   else:
     raise RuntimeError("Unexpected output received from pvck: {}".format(pvck_output))
 
+def does_vg_exist(vg_name):
+  full_device = full_device_path(vg_name)
+  vgck_ret = subprocess.call(['sudo', 'vgck', full_device])
+  if vgck_ret == 5:
+    # not present
+    return False
+  elif vgck_ret == 0:
+    # all good
+    return True
+  else:
+    raise RuntimeError("Unexpected return code received from vgck: {}".format(vgck_ret))
+
+def is_pv_in_vg(vg_name, pv):
+  full_pv = full_device_path(pv)
+  pvdisplay_out = subprocess.check_output(['sudo', 'pvdisplay', full_pv])
+  if re.search('^\s+VG Name\s+{}'.format(vg_name), pvdisplay_out, re.MULTILINE):
+    return True
+  elif re.search('^\s+VG Name\s*$', pvdisplay_out, re.MULTILINE) :
+    return False
+  else:
+    m = re.search('^\s+VG Name\s+(.+)\s*$', pvdisplay_out, re.MULTILINE)
+    if m != None:
+      raise RuntimeError("PV {} is not in VG {} - it is already in VG {}.".format(full_pv, vg_name, m.group(1)))
+    else:
+      raise RuntimeError("Unexpected output from pvdisplay when checking for {} in {}".format(vg_name, pvdisplay_out))
+
 def pvcreate(device):
   full_device = full_device_path(device)
   ret = subprocess.call(['sudo', 'pvcreate', full_device])
   if ret != 0:
     raise RuntimeError("Failed to pvcreate {}".format(full_device))
+
+def vgcreate(vg_name, pvs):
+  full_pv_list = map(full_device_path, pvs)
+  args = list(itertools.chain.from_iterable([ 'sudo', 'vgcreate', full_pv_list])) # flatten
+  ret = subprocess.call(args)
+  if ret != 0:
+    raise RuntimeError("Failed to vgcreate {} containing {}".format(vg_name, pvs))
+
+def vgextend_with_new_pvs(vg_name, pvs):
+  for pv in pvs:
+    if not is_pv_in_vg(vg_name, pv):
+      print "Extending VG {} with {}".format(vg_name, full_device_path(pv))
+      vgextend(vg_name, pv)
+
+def vgextend(vg_name, pv):
+  full_device = full_device_path(pv)
+  ret = subprocess.call(['sudo', 'vgextend', vg_name, full_device])
+  if ret != 0:
+    raise RuntimeError("Failed to vgextend {} with {}".format(vg_name, full_device))
 
 #-----------------------------------------------------------------------
 
@@ -65,4 +110,11 @@ if __name__ == '__main__':
       pvcreate(device)
       if not is_pv_enabled_on_device(device):
         raise RuntimeError("Could not pvcreate {}".format(device))
+
+  # Either create or extend the VG
+  if does_vg_exist(vg_name):
+    vgextend_with_new_pvs(vg_name, disks) # is idempotent, so won't do anything if pvs are already in vg
+  else:
+    print "VG {} does not exist. Creating containing {}.".format(vg_name, disks)
+    vgcreate(vg_name, disks)
 
