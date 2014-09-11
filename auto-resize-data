@@ -117,6 +117,11 @@ def vg_free_pe(vg_name, reserved_percent):
   else:
     raise RuntimeError("Cannot process output of vgdisplay: {}".format(vgdisplay_out))
 
+def nothing_to_do(msg = None):
+  if msg:
+    print msg
+  exit(0)
+
 #-----------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -129,8 +134,12 @@ if __name__ == '__main__':
   reserved_pe_percent = 10
   fs_type = "ext4" # ext4, btrfs, ext3?, xfs?, 'IGNORE'...
 
-  # Get a list of available disks, pvcreate them if they are not already PVs
+  # Get a list of available disks
   disks = get_valid_disks(matching_disks_re, blacklist_disks)
+  if len(disks) == 0:
+    nothing_to_do()
+
+  # pvcreate them if they are not already PVs
   for device in disks:
     if is_pv_enabled_on_device(device):
       print "PV is enabled on {}".format(device)
