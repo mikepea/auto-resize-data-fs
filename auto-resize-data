@@ -102,14 +102,14 @@ def vgextend(vg_name, pv):
   if ret != 0:
     raise RuntimeError("Failed to vgextend {} with {}".format(vg_name, full_device))
 
-def vg_free_pe(vg_name):
+def vg_free_pe(vg_name, reserved_percent):
   vgdisplay_out = subprocess.check_output(['sudo', 'vgdisplay', vg_name])
   free = re.search('^\s+Free +PE / Size\s+(\d+) /', vgdisplay_out, re.MULTILINE)
   total = re.search('^\s+Total +PE\s+(\d+)', vgdisplay_out, re.MULTILINE)
   if (free != None) and (total != None):
     free_pe = int(free.group(1))
     total_pe = int(total.group(1))
-    reserved_pe = total_pe / 10  # reserve free space for snapshots, emergencies
+    reserved_pe = total_pe * reserved_percent / 100
     if ( free_pe - reserved_pe > 0 ):
       return free_pe - reserved_pe
     else:
@@ -126,6 +126,8 @@ if __name__ == '__main__':
   blacklist_disks = []
   vg_name = "vg_data"
   lv_name = "lv_data"
+  reserved_pe_percent = 10
+  fs_type = "ext4" # ext4, btrfs, ext3?, xfs?, 'IGNORE'...
 
   # Get a list of available disks, pvcreate them if they are not already PVs
   disks = get_valid_disks(matching_disks_re, blacklist_disks)
@@ -146,7 +148,7 @@ if __name__ == '__main__':
     vgcreate(vg_name, disks)
 
   # Check for available space to extend into
-  free_pe = vg_free_pe(vg_name)
+  free_pe = vg_free_pe(vg_name, reserved_pe_percent)
   if free_pe > 0:
     # we can increase
     print "WE CAN INCREASE BY {} PE!".format(free_pe)
