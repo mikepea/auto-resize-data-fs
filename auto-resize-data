@@ -130,6 +130,24 @@ def vg_free_pe(vg_name, reserved_percent):
   else:
     raise RuntimeError("Cannot process output of vgdisplay: {}".format(vgdisplay_out))
 
+def mkfs(device, fs_type):
+  ret = subprocess.call(['sudo', 'mkfs', '-t', fs_type, device])
+  if ret != 0:
+    raise RuntimeError("Failed to mkfs {} as {}".format(device, fs_type))
+
+def extendfs(device, fs_type):
+  if ( fs_type == 'ext3' or fs_type == 'ext4' ):
+    command = [ 'sudo', 'resize2fs', device ]
+  elif ( fs_type == 'btrfs' ):
+    command = [ 'sudo', 'btrfs', 'filesystem', 'resize', 'max', device ]
+  else:
+    print "Do not know how to resize {} filesystem type"
+    return
+
+  ret = subprocess.call(command)
+  if ret != 0:
+    raise RuntimeError("Failed to extend {} filesystem on {}".format(fs_type, device))
+
 def nothing_to_do(msg = None):
   if msg:
     print msg
@@ -171,18 +189,25 @@ if __name__ == '__main__':
   free_pe = vg_free_pe(vg_name, reserved_pe_percent)
   if free_pe > 0:
     # we can increase
-    print "WE CAN INCREASE BY {} PE!".format(free_pe)
+    print "We can increase/create {} with {} PE".format(vg_name + "/" + lv_name, free_pe)
   else:
     # no space to extend into
     nothing_to_do()
 
   # check for existence of our LV
   if not is_lv_in_vg(vg_name, lv_name):
-    print "WE NEED TO CREATE OUR LV: {}".format(lv_name)
+    print "Creating our new LV: {}".format(vg_name + "/" + lv_name)
     newly_created_lv = True
     lvcreate(vg_name, lv_name, free_pe)
   else:
+    print "Extending our LV: {}".format(vg_name + "/" + lv_name)
     newly_created_lv = False
     lvextend(vg_name, lv_name, free_pe)
 
-
+  if fs_type != "IGNORE":
+    if newly_created_lv:
+      # create new filesystem
+      mkfs(full_device_path(vg_name + "/" + lv_name), fs_type)
+    else:
+      # extend existing filesystem, if we know how
+      extendfs(full_device_path(vg_name + "/" + lv_name), fs_type)
