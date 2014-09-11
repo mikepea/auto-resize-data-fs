@@ -42,17 +42,16 @@ def full_device_path(device):
 
 def is_pv_enabled_on_device(device):
     full_device = full_device_path(device)
-    pvck_output = subprocess.check_output(
-        ['pvck', full_device],
-        stderr=subprocess.STDOUT
-    )
-    if re.search('Could not find LVM label', pvck_output):
+    ret = subprocess.call(['pvs', full_device])
+    if ret == 5:
+        # not present
         return False
-    elif re.search('Found label on', pvck_output):
+    elif ret == 0:
+        # all good
         return True
     else:
         raise RuntimeError(
-            "Unexpected output received from pvck: {}".format(pvck_output))
+            "Unexpected return code received from pvs: {}".format(ret))
 
 
 def does_vg_exist(vg_name):
