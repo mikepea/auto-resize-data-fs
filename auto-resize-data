@@ -102,6 +102,19 @@ def vgextend(vg_name, pv):
   if ret != 0:
     raise RuntimeError("Failed to vgextend {} with {}".format(vg_name, full_device))
 
+def lvcreate(vg_name, lv_name, available_pe):
+  ret = subprocess.call(['sudo', 'lvcreate', '-n', lv_name,
+                         '-l', '{}'.format(available_pe), vg_name])
+  if ret != 0:
+    raise RuntimeError("Failed to lvcreate {} in {} with {} PEs".format(lv_name, vg_name, available_pe))
+
+def lvextend(vg_name, lv_name, available_pe):
+  full_device = full_device_path(vg_name + "/" + lv_name)
+  ret = subprocess.call(['sudo', 'lvextend',
+                         '-l', '+{}'.format(available_pe), full_device])
+  if ret != 0:
+    raise RuntimeError("Failed to lvextend {} by {}".format(full_device, available_pe))
+
 def vg_free_pe(vg_name, reserved_percent):
   vgdisplay_out = subprocess.check_output(['sudo', 'vgdisplay', vg_name])
   free = re.search('^\s+Free +PE / Size\s+(\d+) /', vgdisplay_out, re.MULTILINE)
@@ -159,9 +172,17 @@ if __name__ == '__main__':
   if free_pe > 0:
     # we can increase
     print "WE CAN INCREASE BY {} PE!".format(free_pe)
+  else:
+    # no space to extend into
+    nothing_to_do()
 
   # check for existence of our LV
   if not is_lv_in_vg(vg_name, lv_name):
     print "WE NEED TO CREATE OUR LV: {}".format(lv_name)
-    #lvcreate(vg_name, lv_name)
+    newly_created_lv = True
+    lvcreate(vg_name, lv_name, free_pe)
+  else:
+    newly_created_lv = False
+    lvextend(vg_name, lv_name, free_pe)
+
 
