@@ -40,7 +40,7 @@ def full_device_path(device):
 def is_pv_enabled_on_device(device):
   full_device = full_device_path(device)
   pvck_output = subprocess.check_output(
-      ['sudo', 'pvck', full_device],
+      ['pvck', full_device],
       stderr=subprocess.STDOUT
       )
   if re.search('Could not find LVM label', pvck_output):
@@ -52,7 +52,7 @@ def is_pv_enabled_on_device(device):
 
 def does_vg_exist(vg_name):
   full_device = full_device_path(vg_name)
-  vgck_ret = subprocess.call(['sudo', 'vgck', full_device])
+  vgck_ret = subprocess.call(['vgck', full_device])
   if vgck_ret == 5:
     # not present
     return False
@@ -64,7 +64,7 @@ def does_vg_exist(vg_name):
 
 def is_pv_in_vg(vg_name, pv):
   full_pv = full_device_path(pv)
-  pvdisplay_out = subprocess.check_output(['sudo', 'pvdisplay', full_pv])
+  pvdisplay_out = subprocess.check_output(['pvdisplay', full_pv])
   if re.search('^\s+VG Name\s+{}'.format(vg_name), pvdisplay_out, re.MULTILINE):
     return True
   elif re.search('^\s+VG Name\s*$', pvdisplay_out, re.MULTILINE) :
@@ -78,7 +78,7 @@ def is_pv_in_vg(vg_name, pv):
 
 def is_lv_in_vg(vg_name, lv_name):
   full_lv_device = full_device_path("{}/{}".format(vg_name,lv_name))
-  lvdisplay_ret = subprocess.call(['sudo', 'lvdisplay', full_lv_device])
+  lvdisplay_ret = subprocess.call(['lvdisplay', full_lv_device])
   if lvdisplay_ret == 5:
     # not present
     return False
@@ -90,13 +90,13 @@ def is_lv_in_vg(vg_name, lv_name):
 
 def pvcreate(device):
   full_device = full_device_path(device)
-  ret = subprocess.call(['sudo', 'pvcreate', full_device])
+  ret = subprocess.call(['pvcreate', full_device])
   if ret != 0:
     raise RuntimeError("Failed to pvcreate {}".format(full_device))
 
 def vgcreate(vg_name, pvs):
   full_pv_list = map(full_device_path, pvs)
-  cmd = [ 'sudo', 'vgcreate', vg_name ] + full_pv_list
+  cmd = [ 'vgcreate', vg_name ] + full_pv_list
   print cmd
   ret = subprocess.call(cmd)
   if ret != 0:
@@ -110,25 +110,25 @@ def vgextend_with_new_pvs(vg_name, pvs):
 
 def vgextend(vg_name, pv):
   full_device = full_device_path(pv)
-  ret = subprocess.call(['sudo', 'vgextend', vg_name, full_device])
+  ret = subprocess.call(['vgextend', vg_name, full_device])
   if ret != 0:
     raise RuntimeError("Failed to vgextend {} with {}".format(vg_name, full_device))
 
 def lvcreate(vg_name, lv_name, available_pe):
-  ret = subprocess.call(['sudo', 'lvcreate', '-n', lv_name,
+  ret = subprocess.call(['lvcreate', '-n', lv_name,
                          '-l', '{}'.format(available_pe), vg_name])
   if ret != 0:
     raise RuntimeError("Failed to lvcreate {} in {} with {} PEs".format(lv_name, vg_name, available_pe))
 
 def lvextend(vg_name, lv_name, available_pe):
   full_device = full_device_path(vg_name + "/" + lv_name)
-  ret = subprocess.call(['sudo', 'lvextend',
+  ret = subprocess.call(['lvextend',
                          '-l', '+{}'.format(available_pe), full_device])
   if ret != 0:
     raise RuntimeError("Failed to lvextend {} by {}".format(full_device, available_pe))
 
 def vg_free_pe(vg_name, reserved_percent):
-  vgdisplay_out = subprocess.check_output(['sudo', 'vgdisplay', vg_name])
+  vgdisplay_out = subprocess.check_output(['vgdisplay', vg_name])
   free = re.search('^\s+Free +PE / Size\s+(\d+) /', vgdisplay_out, re.MULTILINE)
   total = re.search('^\s+Total +PE\s+(\d+)', vgdisplay_out, re.MULTILINE)
   if (free != None) and (total != None):
@@ -143,15 +143,15 @@ def vg_free_pe(vg_name, reserved_percent):
     raise RuntimeError("Cannot process output of vgdisplay: {}".format(vgdisplay_out))
 
 def mkfs(device, fs_type):
-  ret = subprocess.call(['sudo', 'mkfs', '-t', fs_type, device])
+  ret = subprocess.call(['mkfs', '-t', fs_type, device])
   if ret != 0:
     raise RuntimeError("Failed to mkfs {} as {}".format(device, fs_type))
 
 def extendfs(device, fs_type):
   if ( fs_type == 'ext3' or fs_type == 'ext4' ):
-    command = [ 'sudo', 'resize2fs', device ]
+    command = [ 'resize2fs', device ]
   elif ( fs_type == 'btrfs' ):
-    command = [ 'sudo', 'btrfs', 'filesystem', 'resize', 'max', device ]
+    command = [ 'btrfs', 'filesystem', 'resize', 'max', device ]
   else:
     print "Do not know how to resize {} filesystem type"
     return
