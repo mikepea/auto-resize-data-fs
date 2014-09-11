@@ -85,8 +85,9 @@ def pvcreate(device):
 
 def vgcreate(vg_name, pvs):
   full_pv_list = map(full_device_path, pvs)
-  args = list(itertools.chain.from_iterable([ 'sudo', 'vgcreate', full_pv_list])) # flatten
-  ret = subprocess.call(args)
+  cmd = [ 'sudo', 'vgcreate', vg_name ] + full_pv_list
+  print cmd
+  ret = subprocess.call(cmd)
   if ret != 0:
     raise RuntimeError("Failed to vgcreate {} containing {}".format(vg_name, pvs))
 
