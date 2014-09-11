@@ -141,10 +141,8 @@ if __name__ == '__main__':
 
   # pvcreate them if they are not already PVs
   for device in disks:
-    if is_pv_enabled_on_device(device):
-      print "PV is enabled on {}".format(device)
-    else:
-      print "PV is not enabled on {}".format(device)
+    if not is_pv_enabled_on_device(device):
+      print "Turning {} into a PV using pvcreate".format(device)
       pvcreate(device)
       if not is_pv_enabled_on_device(device):
         raise RuntimeError("Could not pvcreate {}".format(device))
