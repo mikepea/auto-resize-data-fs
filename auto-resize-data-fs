@@ -78,7 +78,7 @@ def is_pv_in_vg(vg_name, pv):
         return False
     else:
         m = re.search('^\s+VG Name\s+(.+)\s*$', pvdisplay_out, re.MULTILINE)
-        if m != None:
+        if m is not None:
             raise RuntimeError(
                 "PV {} is not in VG {} - it is already in VG {}.".format(full_pv, vg_name, m.group(1)))
         else:
@@ -154,7 +154,7 @@ def vg_free_pe(vg_name, reserved_percent):
     free = re.search(
         '^\s+Free +PE / Size\s+(\d+) /', vgdisplay_out, re.MULTILINE)
     total = re.search('^\s+Total +PE\s+(\d+)', vgdisplay_out, re.MULTILINE)
-    if (free != None) and (total != None):
+    if (free is not None) and (total is not None):
         free_pe = int(free.group(1))
         total_pe = int(total.group(1))
         reserved_pe = total_pe * reserved_percent / 100
@@ -193,7 +193,7 @@ def nothing_to_do(msg=None):
         print msg
     exit(0)
 
-#-----------------------------------------------------------------------
+# -----------------------------------------------------------------------
 
 if __name__ == '__main__':
 
