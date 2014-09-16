@@ -20,7 +20,6 @@
 import re
 import subprocess
 
-
 def get_valid_disks(matcher_re, blacklist):
     valid_disks = []
     partitions_file = '/proc/partitions'
@@ -89,16 +88,18 @@ def is_pv_in_vg(vg_name, pv):
 
 def is_lv_in_vg(vg_name, lv_name):
     full_lv_device = full_device_path("{}/{}".format(vg_name, lv_name))
-    lvdisplay_ret = subprocess.call(['lvdisplay', full_lv_device])
-    if lvdisplay_ret == 5:
+    ret = subprocess.call([
+      'lvs', '--separator', ',', '--noheadings', full_lv_device
+    ])
+    if ret == 5:
         # not present
         return False
-    elif lvdisplay_ret == 0:
+    elif ret == 0:
         # all good
         return True
     else:
         raise RuntimeError(
-            "Unexpected return code received from lvdisplay: {}".format(lvdisplay_ret))
+            "Unexpected return code received from lvs: {}".format(ret))
 
 
 def pvcreate(device):
