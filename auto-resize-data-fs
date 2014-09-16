@@ -152,13 +152,14 @@ def lvextend(vg_name, lv_name, available_pe):
 
 
 def vg_free_pe(vg_name, reserved_percent):
-    vgdisplay_out = subprocess.check_output(['vgdisplay', vg_name])
-    free = re.search(
-        '^\s+Free +PE / Size\s+(\d+) /', vgdisplay_out, re.MULTILINE)
-    total = re.search('^\s+Total +PE\s+(\d+)', vgdisplay_out, re.MULTILINE)
-    if (free is not None) and (total is not None):
-        free_pe = int(free.group(1))
-        total_pe = int(total.group(1))
+    vgs_out = subprocess.check_output([
+      'vgs', '--noheading', '--separator', ',',
+      '--options', 'vg_free_count,vg_extent_count', vg_name
+    ])
+    matcher = re.search('^\s+(\d+),(\d+)', vgs_out)
+    if matcher is not None:
+        free_pe = int(matcher.group(1))
+        total_pe = int(matcher.group(2))
         reserved_pe = total_pe * reserved_percent / 100
         if (free_pe - reserved_pe > 0):
             return free_pe - reserved_pe
@@ -166,7 +167,7 @@ def vg_free_pe(vg_name, reserved_percent):
             return 0
     else:
         raise RuntimeError(
-            "Cannot process output of vgdisplay: {}".format(vgdisplay_out))
+            "Cannot process output of vgs: {}".format(vgs_out))
 
 
 def mkfs(device, fs_type):
