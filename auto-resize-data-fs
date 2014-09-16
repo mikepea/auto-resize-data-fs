@@ -70,19 +70,21 @@ def does_vg_exist(vg_name):
 
 def is_pv_in_vg(vg_name, pv):
     full_pv = full_device_path(pv)
-    pvdisplay_out = subprocess.check_output(['pvdisplay', full_pv])
-    if re.search('^\s+VG Name\s+{}'.format(vg_name), pvdisplay_out, re.MULTILINE):
+    pvs_out = subprocess.check_output([
+        'pvs', '--separator', ',', '--noheadings', '--options', 'vg_name', full_pv
+    ])
+    if re.search('^\s+{}$'.format(vg_name), pvs_out):
         return True
-    elif re.search('^\s+VG Name\s*$', pvdisplay_out, re.MULTILINE):
+    elif re.search('^\s+$', pvs_out):
         return False
     else:
-        m = re.search('^\s+VG Name\s+(.+)\s*$', pvdisplay_out, re.MULTILINE)
+        m = re.search('^\s+(.+)$', pvs_out)
         if m is not None:
             raise RuntimeError(
                 "PV {} is not in VG {} - it is already in VG {}.".format(full_pv, vg_name, m.group(1)))
         else:
-            raise RuntimeError("Unexpected output from pvdisplay when checking for {} in {}".format(
-                vg_name, pvdisplay_out))
+            raise RuntimeError("Unexpected output from pvs when checking for {} in {}".format(
+                vg_name, pvs_out))
 
 
 def is_lv_in_vg(vg_name, lv_name):
