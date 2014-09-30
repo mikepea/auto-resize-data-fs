@@ -201,7 +201,7 @@ def nothing_to_do(msg=None):
 if __name__ == '__main__':
 
     # variables that we could concievably treat as config
-    matching_disks_re = re.compile('.+\ssd[b-z]$')
+    matching_disks_re = re.compile('.+\s(sd[b-z]|xvd[f-z])$')
     blacklist_disks = []
     vg_name = "vg_data"
     lv_name = "lv_data"
