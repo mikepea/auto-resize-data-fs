@@ -203,7 +203,7 @@ if __name__ == '__main__':
     # variables that we could concievably treat as config
     matching_disks_re = re.compile('.+\s(sd[b-z]|xvd[f-z])$')
     blacklist_disks = []
-    vg_name = "vg_data"
+    vg_name = "vg_autodata"
     lv_name = "lv_data"
     reserved_pe_percent = 10
     fs_type = "ext4"  # ext4, btrfs, ext3?, xfs?, 'IGNORE'...
